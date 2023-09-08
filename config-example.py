@@ -1,6 +1,7 @@
 # overkiz
 username = "me@example.com"
 password = "very secret"
+# for possible servers, see https://github.com/iMicknl/python-overkiz-api/blob/main/pyoverkiz/enums/server.py
 server = "atlantic_cozytouch"
 
 # mqtt
