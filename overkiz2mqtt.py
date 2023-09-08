@@ -58,6 +58,9 @@ async def main() -> None:
         devices = await client.get_devices(refresh=True)
         devices_fresh = time.time()
       for device in devices:
+        # refresh boiler temperature
+        if hasattr(config, 'device_name') and hasattr(config, 'device_command') and device.controllable_name == config.device_name:
+          await client.execute_command(device.device_url, config.device_command)
         # build device dict
         dev = {}
         dev['available'] = device.available
@@ -115,7 +118,7 @@ async def main() -> None:
         if time.time() - fresh > 600:
           print(f"Exiting, too long since last state update")
           sys.exit(1)
-      time.sleep(60)
+      time.sleep(getattr(config, 'sleep', 60))
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
