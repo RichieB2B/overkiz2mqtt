@@ -3,9 +3,9 @@ username = "me@example.com"
 password = "very secret"
 # for possible servers, see https://github.com/iMicknl/python-overkiz-api/blob/main/pyoverkiz/enums/server.py
 server = "atlantic_cozytouch"
-# command to run after every sleep cycle
-device_name = "io:AtlanticDomesticHotWaterProductionV2_CV4E_IOComponent"
-device_command = "refreshMiddleWaterTemperature"
+# command to run after every sleep cycle, uncomment to use
+#device_name = "io:AtlanticDomesticHotWaterProductionV2_CV4E_IOComponent"
+#device_command = "refreshMiddleWaterTemperature"
 sleep = 60
 
 # mqtt

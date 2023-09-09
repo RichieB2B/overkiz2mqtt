@@ -11,7 +11,7 @@ import argparse
 from pyoverkiz.const import SUPPORTED_SERVERS
 from pyoverkiz.client import OverkizClient
 from pyoverkiz.models import States
-from pyoverkiz.exceptions import OverkizException
+from pyoverkiz.exceptions import OverkizException, TooManyRequestsException
 
 import config
 
@@ -55,12 +55,20 @@ async def main() -> None:
       data_received = False
       # refresh devices once per day
       if time.time() - devices_fresh >= 3600 * 24:
-        devices = await client.get_devices(refresh=True)
+        try:
+          devices = await client.get_devices(refresh=True)
+        except TooManyRequestsException as e:
+          print(f'Error during get_devices(): {str(e)}')
+          return
         devices_fresh = time.time()
       for device in devices:
         # refresh boiler temperature
         if hasattr(config, 'device_name') and hasattr(config, 'device_command') and device.controllable_name == config.device_name:
-          await client.execute_command(device.device_url, config.device_command)
+          try:
+            await client.execute_command(device.device_url, config.device_command)
+          except TooManyRequestsException as e:
+            print(f'Error while executing {config.device_command}: {str(e)}')
+            return
         # build device dict
         dev = {}
         dev['available'] = device.available
@@ -100,7 +108,11 @@ async def main() -> None:
           print("==== GET_STATE =======")
 
         states = dev['states'] = {}
-        newstates = await client.get_state(device.device_url)
+        try:
+          newstates = await client.get_state(device.device_url)
+        except TooManyRequestsException as e:
+          print(f'Error during get_state(): {str(e)}')
+          return
         for state in newstates:
           states[state.name] = state.value
           data_received = True
