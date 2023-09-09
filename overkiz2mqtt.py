@@ -99,6 +99,9 @@ async def main() -> None:
             print(f"{state.name} = {state.value}")
           print("==== DEFINITION ======")
           print(f'qualified_name = f{device.definition.qualified_name}')
+          print("==== DEFINITION COMMANDS")
+          for command in device.definition.commands:
+            print(f"command_name = {command.command_name}, nparams = {command.nparams}")
           print("==== DEFINITION STATES")
           for state in device.definition.states:
             print(f"{state.qualified_name} = {state.values}")
