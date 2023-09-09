@@ -58,7 +58,7 @@ async def main() -> None:
         try:
           devices = await client.get_devices(refresh=True)
         except TooManyRequestsException as e:
-          print(f'Error during get_devices(): {str(e)}')
+          print(f'{type(e).__name__} during get_devices(): {str(e)}')
           return
         devices_fresh = time.time()
       for device in devices:
@@ -67,7 +67,7 @@ async def main() -> None:
           try:
             await client.execute_command(device.device_url, config.device_command)
           except TooManyRequestsException as e:
-            print(f'Error while executing {config.device_command}: {str(e)}')
+            print(f'{type(e).__name__} while executing {config.device_command}: {str(e)}')
             return
         # build device dict
         dev = {}
@@ -114,7 +114,7 @@ async def main() -> None:
         try:
           newstates = await client.get_state(device.device_url)
         except TooManyRequestsException as e:
-          print(f'Error during get_state(): {str(e)}')
+          print(f'{type(e).__name__} during get_state(): {str(e)}')
           return
         for state in newstates:
           states[state.name] = state.value
