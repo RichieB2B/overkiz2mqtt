@@ -4,16 +4,23 @@ import os
 import sys
 import time
 import json
+import jsons
 import asyncio
 import paho.mqtt.client as mqtt
 import argparse
 
 from pyoverkiz.const import SUPPORTED_SERVERS
 from pyoverkiz.client import OverkizClient
-from pyoverkiz.models import States
+from pyoverkiz.models import State, EventState
 from pyoverkiz.exceptions import OverkizException, TooManyRequestsException
 
 import config
+
+def serialize_state(state, **kwargs):
+  if kwargs.get('strip_nulls') and state.value is None:
+    return None
+  else:
+    return({'name': state.name, 'type': state.type.name, 'value': state.value})
 
 def on_connect(client, userdata, flags, rc):
   codes = [
@@ -41,6 +48,8 @@ def mqtt_init():
   return client
 
 async def main() -> None:
+  jsons.set_serializer(serialize_state, State)
+  jsons.set_serializer(serialize_state, EventState)
   async with OverkizClient(config.username, config.password, server=SUPPORTED_SERVERS[config.server]) as client:
     try:
       await client.login()
@@ -68,7 +77,6 @@ async def main() -> None:
             await client.execute_command(device.device_url, config.device_command)
           except TooManyRequestsException as e:
             print(f'{type(e).__name__} while executing {config.device_command}: {str(e)}')
-            return
         # build device dict
         dev = {}
         dev['available'] = device.available
@@ -133,7 +141,15 @@ async def main() -> None:
         if time.time() - fresh > 600:
           print(f"Exiting, too long since last state update")
           sys.exit(1)
-      time.sleep(getattr(config, 'sleep', 60))
+      # print incoming events while waiting to start next loop iteration
+      for i in range(0, getattr(config, 'sleep', 60), 2):
+        events = await client.fetch_events()
+        for event in events:
+          event_string = jsons.dumps(event, strip_nulls=True)
+          if args.debug:
+            print(f'Event: {event_string}')
+          mqtt_client.publish(f'{config.mqtt_topic}/events', event_string)
+        time.sleep(2)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
