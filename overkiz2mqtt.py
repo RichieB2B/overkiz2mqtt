@@ -3,7 +3,6 @@
 import os
 import sys
 import time
-import json
 import jsons
 import asyncio
 import paho.mqtt.client as mqtt
@@ -21,6 +20,12 @@ def serialize_state(state, **kwargs):
     return None
   else:
     return({'name': state.name, 'type': state.type.name, 'value': state.value})
+
+def publish_states(device_name, states):
+        message = jsons.dumps({s.name: s.value for s in states})
+        if args.debug:
+          print(f'Publishing {config.mqtt_topic}/{device_name}/states -> {message}')
+        mqtt_client.publish(f'{config.mqtt_topic}/{device_name}/states', message)
 
 def on_connect(client, userdata, flags, rc):
   codes = [
@@ -56,8 +61,7 @@ async def main() -> None:
     except Exception as exception:  # pylint: disable=broad-except
       print(exception)
       return
-    devices = await client.get_devices()
-    devices_fresh = time.time()
+    devices_fresh = 0
     # Start loop
     fresh = time.time()
     while True:
@@ -66,6 +70,12 @@ async def main() -> None:
       if time.time() - devices_fresh >= 3600 * 24:
         try:
           devices = await client.get_devices(refresh=True)
+          for device in devices:
+            message = jsons.dumps(device)
+            if args.debug:
+              print(f'Publishing {config.mqtt_topic}/{device.controllable_name} -> {message}')
+            mqtt_client.publish(f'{config.mqtt_topic}/{device.controllable_name}', message, retain=True)
+            publish_states(device.controllable_name, device.states)
         except TooManyRequestsException as e:
           print(f'{type(e).__name__} during get_devices(): {str(e)}')
           return
@@ -77,63 +87,14 @@ async def main() -> None:
             await client.execute_command(device.device_url, config.device_command)
           except TooManyRequestsException as e:
             print(f'{type(e).__name__} while executing {config.device_command}: {str(e)}')
-        # build device dict
-        dev = {}
-        dev['available'] = device.available
-        dev['enabled'] = device.enabled
-        dev['type'] = device.type.name
-        dev['protocol'] = device.protocol.name
-        dev['widget'] = device.widget.name
-        dev['ui_class'] = device.ui_class.name
-        dev['label'] = device.label
-        dev['url'] = device.device_url
-        attributes = {}
-        for state in device.attributes:
-          attributes[state.name] = state.value
-        if attributes:
-          dev['attributes'] = attributes
 
-        if args.debug:
-          print("==== DEVICE ==========")
-          print(f'available = {device.available}')
-          print(f'enabled = {device.enabled}')
-          print(f'type = {device.type}')
-          print(f'label = {device.label}')
-          print(f'controllable_name = {device.controllable_name}')
-          print(f'device_url = {device.device_url}')
-          print(f'data_properties = {device.data_properties}')
-          print("==== ATTRIBUTES ======")
-          for state in device.attributes:
-            print(f"{state.name} = {state.value}")
-          print("==== DEFINITION ======")
-          print(f'qualified_name = f{device.definition.qualified_name}')
-          print("==== DEFINITION COMMANDS")
-          for command in device.definition.commands:
-            print(f"command_name = {command.command_name}, nparams = {command.nparams}")
-          print("==== DEFINITION STATES")
-          for state in device.definition.states:
-            print(f"{state.qualified_name} = {state.values}")
-          print("==== DEVICE STATES ===")
-          for state in device.states:
-            print(f"{state.name} = {state.value}")
-          print("==== GET_STATE =======")
-
-        states = dev['states'] = {}
+        # get current states
         try:
-          newstates = await client.get_state(device.device_url)
+          states = await client.get_state(device.device_url)
+          data_received = True
         except TooManyRequestsException as e:
           print(f'{type(e).__name__} during get_state(): {str(e)}')
-          return
-        for state in newstates:
-          states[state.name] = state.value
-          data_received = True
-          if args.debug:
-            print(f"{state.name} = {state.value}")
-
-        message = json.dumps(dev, default=str)
-        if args.debug:
-          print(f'{device.controllable_name} -> {message}')
-        mqtt_client.publish(f'{config.mqtt_topic}/{device.controllable_name}', message)
+        publish_states(device.controllable_name, states)
 
       if data_received:
         fresh = time.time()
@@ -141,13 +102,14 @@ async def main() -> None:
         if time.time() - fresh > 600:
           print(f"Exiting, too long since last state update")
           sys.exit(1)
+
       # print incoming events while waiting to start next loop iteration
       for i in range(0, getattr(config, 'sleep', 60), 2):
         events = await client.fetch_events()
         for event in events:
           event_string = jsons.dumps(event, strip_nulls=True)
           if args.debug:
-            print(f'Event: {event_string}')
+            print(f'Publishing {config.mqtt_topic}/events -> {event_string}')
           mqtt_client.publish(f'{config.mqtt_topic}/events', event_string)
         time.sleep(2)
 
