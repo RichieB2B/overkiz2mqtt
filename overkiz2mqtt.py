@@ -22,10 +22,10 @@ def serialize_state(state, **kwargs):
     return({'name': state.name, 'type': state.type.name, 'value': state.value})
 
 def publish_states(device_name, states):
-        message = jsons.dumps({s.name: s.value for s in states})
-        if args.debug:
-          print(f'Publishing {config.mqtt_topic}/{device_name}/states -> {message}')
-        mqtt_client.publish(f'{config.mqtt_topic}/{device_name}/states', message)
+  message = jsons.dumps({s.name: s.value for s in states})
+  if args.debug:
+    print(f'Publishing {config.mqtt_topic}/{device_name}/states -> {message}')
+  mqtt_client.publish(f'{config.mqtt_topic}/{device_name}/states', message)
 
 def on_connect(client, userdata, flags, rc):
   codes = [
