@@ -87,6 +87,7 @@ async def main() -> None:
             await client.execute_command(device.device_url, config.device_command)
           except TooManyRequestsException as e:
             print(f'{type(e).__name__} while executing {config.device_command}: {str(e)}')
+            return
 
         # get current states
         try:
@@ -94,6 +95,7 @@ async def main() -> None:
           data_received = True
         except TooManyRequestsException as e:
           print(f'{type(e).__name__} during get_state(): {str(e)}')
+          return
         if states:
           publish_states(device.controllable_name, states)
 
