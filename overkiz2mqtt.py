@@ -81,7 +81,7 @@ async def main() -> None:
           return
         devices_fresh = time.time()
       for device in devices:
-        # refresh boiler temperature
+        # execute command every sleep cycle
         if hasattr(config, 'device_name') and hasattr(config, 'device_command') and device.controllable_name == config.device_name:
           try:
             await client.execute_command(device.device_url, config.device_command)
@@ -94,7 +94,8 @@ async def main() -> None:
           data_received = True
         except TooManyRequestsException as e:
           print(f'{type(e).__name__} during get_state(): {str(e)}')
-        publish_states(device.controllable_name, states)
+        if states:
+          publish_states(device.controllable_name, states)
 
       if data_received:
         fresh = time.time()
@@ -111,7 +112,7 @@ async def main() -> None:
           if args.debug:
             print(f'Publishing {config.mqtt_topic}/events -> {event_string}')
           mqtt_client.publish(f'{config.mqtt_topic}/events', event_string)
-        time.sleep(2)
+        await asyncio.sleep(2)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
