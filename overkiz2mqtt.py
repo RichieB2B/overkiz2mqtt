@@ -115,6 +115,8 @@ async def main() -> None:
         await asyncio.sleep(2)
 
 if __name__ == '__main__':
+  sys.stdout.reconfigure(line_buffering=True)
+  sys.stderr.reconfigure(line_buffering=True)
   parser = argparse.ArgumentParser()
   parser.add_argument("-d", "--debug", help="debug mode", action='store_true')
   args = parser.parse_args()
