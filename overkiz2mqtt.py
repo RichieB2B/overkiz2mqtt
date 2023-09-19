@@ -13,7 +13,7 @@ import argparse
 from pyoverkiz.const import SUPPORTED_SERVERS
 from pyoverkiz.client import OverkizClient
 from pyoverkiz.models import State, EventState
-from pyoverkiz.exceptions import OverkizException, TooManyRequestsException
+from pyoverkiz.exceptions import OverkizException, TooManyRequestsException, BadCredentialsException
 
 import config
 
@@ -75,8 +75,11 @@ async def main() -> None:
               OverkizClient(config.username, config.password, server=SUPPORTED_SERVERS[config.server], session=session) as client):
     try:
       await client.login()
-    except Exception as exception:  # pylint: disable=broad-except
-      print(exception)
+    except Exception as e:  # pylint: disable=broad-except
+      print(f'{type(e).__name__} during login: {str(e)}')
+      # Sleep for a while before retrying credentials
+      if isinstance(e, BadCredentialsException):
+        time.sleep(300)
       return
     devices_fresh = 0
     # Start loop
