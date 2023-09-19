@@ -71,8 +71,10 @@ async def main() -> None:
   else:
     trace_configs = []
 
-  async with (aiohttp.ClientSession(trace_configs=trace_configs) as session,
-              OverkizClient(config.username, config.password, server=SUPPORTED_SERVERS[config.server], session=session) as client):
+  async with OverkizClient(config.username,
+                           config.password,
+                           server=SUPPORTED_SERVERS[config.server],
+                           session=aiohttp.ClientSession(trace_configs=trace_configs)) as client:
     try:
       await client.login()
     except Exception as e:  # pylint: disable=broad-except
