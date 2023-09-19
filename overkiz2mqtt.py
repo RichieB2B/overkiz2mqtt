@@ -6,6 +6,7 @@ import time
 import jsons
 import logging
 import asyncio
+import aiohttp
 import paho.mqtt.client as mqtt
 import argparse
 
@@ -52,10 +53,26 @@ def mqtt_init():
   client.loop_start()
   return client
 
+async def on_request_start(session, context, params):
+  logging.getLogger('aiohttp.client').debug(f'Starting request <{params}>')
+
+async def on_request_end(session, context, params):
+  logging.getLogger('aiohttp.client').debug(f'Request end <{params}>')
+  logging.getLogger('aiohttp.client').debug(await params.response.text())
+
 async def main() -> None:
   jsons.set_serializer(serialize_state, State)
   jsons.set_serializer(serialize_state, EventState)
-  async with OverkizClient(config.username, config.password, server=SUPPORTED_SERVERS[config.server]) as client:
+  if args.debug:
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_request_start.append(on_request_start)
+    trace_config.on_request_end.append(on_request_end)
+    trace_configs = [trace_config]
+  else:
+    trace_configs = []
+
+  async with (aiohttp.ClientSession(trace_configs=trace_configs) as session,
+              OverkizClient(config.username, config.password, server=SUPPORTED_SERVERS[config.server], session=session) as client):
     try:
       await client.login()
     except Exception as exception:  # pylint: disable=broad-except
