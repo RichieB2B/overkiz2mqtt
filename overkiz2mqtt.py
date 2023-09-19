@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import jsons
+import logging
 import asyncio
 import paho.mqtt.client as mqtt
 import argparse
@@ -23,8 +24,7 @@ def serialize_state(state, **kwargs):
 
 def publish_states(device_name, states):
   message = jsons.dumps({s.name: s.value for s in states})
-  if args.debug:
-    print(f'Publishing {config.mqtt_topic}/{device_name}/states -> {message}')
+  logging.debug(f'Publishing {config.mqtt_topic}/{device_name}/states -> {message}')
   mqtt_client.publish(f'{config.mqtt_topic}/{device_name}/states', message)
 
 def on_connect(client, userdata, flags, rc):
@@ -72,8 +72,7 @@ async def main() -> None:
           devices = await client.get_devices(refresh=True)
           for device in devices:
             message = jsons.dumps(device)
-            if args.debug:
-              print(f'Publishing {config.mqtt_topic}/{device.controllable_name} -> {message}')
+            logging.debug(f'Publishing {config.mqtt_topic}/{device.controllable_name} -> {message}')
             mqtt_client.publish(f'{config.mqtt_topic}/{device.controllable_name}', message, retain=True)
             publish_states(device.controllable_name, device.states)
         except TooManyRequestsException as e:
@@ -111,8 +110,7 @@ async def main() -> None:
         events = await client.fetch_events()
         for event in events:
           event_string = jsons.dumps(event, strip_nulls=True)
-          if args.debug:
-            print(f'Publishing {config.mqtt_topic}/events -> {event_string}')
+          logging.debug(f'Publishing {config.mqtt_topic}/events -> {event_string}')
           mqtt_client.publish(f'{config.mqtt_topic}/events', event_string)
         await asyncio.sleep(2)
 
@@ -122,6 +120,12 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument("-d", "--debug", help="debug mode", action='store_true')
   args = parser.parse_args()
+
+  if args.debug:
+    level=logging.DEBUG
+  else:
+    level=logging.INFO
+  logging.basicConfig(level=level)
 
   mqtt_client = mqtt_init()
 
