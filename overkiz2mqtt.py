@@ -13,7 +13,9 @@ import argparse
 from pyoverkiz.const import SUPPORTED_SERVERS
 from pyoverkiz.client import OverkizClient
 from pyoverkiz.models import State, EventState
-from pyoverkiz.exceptions import OverkizException, TooManyRequestsException, BadCredentialsException
+from pyoverkiz.exceptions import OverkizException, TooManyRequestsException, BadCredentialsException, NotAuthenticatedException
+from aiohttp.client_exceptions import ServerDisconnectedError, ClientOSError
+catch_exceptions = (TooManyRequestsException, NotAuthenticatedException, ServerDisconnectedError, ClientOSError)
 
 import config
 
@@ -97,7 +99,7 @@ async def main() -> None:
             logging.debug(f'Publishing {config.mqtt_topic}/{device.controllable_name} -> {message}')
             mqtt_client.publish(f'{config.mqtt_topic}/{device.controllable_name}', message, retain=True)
             publish_states(device.controllable_name, device.states)
-        except TooManyRequestsException as e:
+        except catch_exceptions as e:
           print(f'{type(e).__name__} during get_devices(): {str(e)}')
           return
         devices_fresh = time.time()
@@ -106,7 +108,7 @@ async def main() -> None:
         if hasattr(config, 'device_name') and hasattr(config, 'device_command') and device.controllable_name == config.device_name:
           try:
             await client.execute_command(device.device_url, config.device_command)
-          except TooManyRequestsException as e:
+          except catch_exceptions as e:
             print(f'{type(e).__name__} while executing {config.device_command}: {str(e)}')
             return
 
@@ -114,7 +116,7 @@ async def main() -> None:
         try:
           states = await client.get_state(device.device_url)
           data_received = True
-        except TooManyRequestsException as e:
+        except catch_exceptions as e:
           print(f'{type(e).__name__} during get_state(): {str(e)}')
           return
         if states:
@@ -129,7 +131,11 @@ async def main() -> None:
 
       # print incoming events while waiting to start next loop iteration
       for i in range(0, getattr(config, 'sleep', 60), 2):
-        events = await client.fetch_events()
+        try:
+          events = await client.fetch_events()
+        except catch_exceptions as e:
+          print(f'{type(e).__name__} during fetch_events(): {str(e)}')
+          return
         for event in events:
           event_string = jsons.dumps(event, strip_nulls=True)
           logging.debug(f'Publishing {config.mqtt_topic}/events -> {event_string}')
