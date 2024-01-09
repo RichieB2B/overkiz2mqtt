@@ -9,6 +9,7 @@ import asyncio
 import aiohttp
 import paho.mqtt.client as mqtt
 import argparse
+import requests
 
 from pyoverkiz.const import SUPPORTED_SERVERS
 from pyoverkiz.client import OverkizClient
@@ -142,6 +143,15 @@ async def main() -> None:
           mqtt_client.publish(f'{config.mqtt_topic}/events', event_string)
         await asyncio.sleep(2)
 
+def cozytouch_maintenance():
+  response = requests.get('https://apis-availability.iot-groupe-atlantic.com/api/MaintenanceStatus?code=xcl4yMLAUG7IFP1QCWrqXnHdcpbZ-7NVHBOwb4kfuz88AzFuwwaCvA==&application=gacoma&environment=production')
+  logging.debug(response.content)
+  try:
+    result = response.json()
+  except:
+    return False
+  return result.get('isInMaintenance', False)
+
 if __name__ == '__main__':
   sys.stdout.reconfigure(line_buffering=True)
   sys.stderr.reconfigure(line_buffering=True)
@@ -154,6 +164,10 @@ if __name__ == '__main__':
   else:
     level=logging.INFO
   logging.basicConfig(level=level)
+
+  if config.server == 'atlantic_cozytouch' and cozytouch_maintenance():
+    logging.warning('Cozytouch API is in maintenance: exiting')
+    sys.exit(0)
 
   mqtt_client = mqtt_init()
 
