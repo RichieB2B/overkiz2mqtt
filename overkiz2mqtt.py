@@ -16,11 +16,13 @@ from pyoverkiz.client import OverkizClient
 from pyoverkiz.models import State, EventState
 from pyoverkiz.exceptions import OverkizException, TooManyRequestsException, BadCredentialsException, NotAuthenticatedException
 from aiohttp.client_exceptions import ServerDisconnectedError, ClientOSError
+from aiohttp.http_exceptions import BadHttpMessage
 catch_exceptions = (
   TooManyRequestsException,
   NotAuthenticatedException,
   ServerDisconnectedError,
   ClientOSError,
+  BadHttpMessage,
   asyncio.TimeoutError,
 )
 
