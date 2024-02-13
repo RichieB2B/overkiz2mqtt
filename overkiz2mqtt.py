@@ -152,13 +152,13 @@ async def main() -> None:
         await asyncio.sleep(2)
 
 def cozytouch_maintenance():
-  response = requests.get('https://apis-availability.iot-groupe-atlantic.com/api/MaintenanceStatus?code=xcl4yMLAUG7IFP1QCWrqXnHdcpbZ-7NVHBOwb4kfuz88AzFuwwaCvA==&application=gacoma&environment=production')
+  response = requests.get('https://azfun-messconsapi-prod-001.azurewebsites.net/api/GetMaintenanceMessages?code=8u2u6Xh81oivTob0pxClHA5LaJp3tx-Ah9mg9o3a5BIAAzFuaKoRCw%3D%3D&application=gacoma&environment=production&appversion=3.7.10&lang=en_GB')
   logging.debug(response.content)
   try:
     result = response.json()
   except:
     return False
-  return result.get('isInMaintenance', False)
+  return result.get('forceMaintenance', False)
 
 if __name__ == '__main__':
   sys.stdout.reconfigure(line_buffering=True)
