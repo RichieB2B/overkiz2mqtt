@@ -39,7 +39,7 @@ def publish_states(device_name, states):
   logging.debug(f'Publishing {config.mqtt_topic}/{device_name}/states -> {message}')
   mqtt_client.publish(f'{config.mqtt_topic}/{device_name}/states', message)
 
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, flags, rc, properties=None):
   codes = [
     'Connection successful',
     'Connection refused – incorrect protocol version',
@@ -49,14 +49,19 @@ def on_connect(client, userdata, flags, rc):
     'Connection refused – not authorised',
   ]
   if rc!=0:
-    if rc > 0 and rc < 6:
+    if hasattr(mqtt, 'CallbackAPIVersion'):
+      print(rc)
+    elif rc > 0 and rc < 6:
       print(codes[rc])
     else:
       print(f'Bad connection, unknown return code: {rc}')
     os._exit(1)
 
 def mqtt_init():
-  client = mqtt.Client()
+  if hasattr(mqtt, 'CallbackAPIVersion'):
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
+  else:
+    client = mqtt.Client()
   if hasattr(config, 'mqtt_username') and hasattr(config, 'mqtt_password'):
     client.username_pw_set(config.mqtt_username, config.mqtt_password)
   client.on_connect=on_connect
