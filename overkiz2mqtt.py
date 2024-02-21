@@ -59,7 +59,7 @@ def on_connect(client, userdata, flags, rc, properties=None):
 
 def mqtt_init():
   if hasattr(mqtt, 'CallbackAPIVersion'):
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
   else:
     client = mqtt.Client()
   if hasattr(config, 'mqtt_username') and hasattr(config, 'mqtt_password'):
