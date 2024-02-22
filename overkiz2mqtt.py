@@ -158,7 +158,11 @@ async def main() -> None:
         await asyncio.sleep(2)
 
 def cozytouch_maintenance():
-  response = requests.get('https://azfun-messconsapi-prod-001.azurewebsites.net/api/GetMaintenanceMessages?code=8u2u6Xh81oivTob0pxClHA5LaJp3tx-Ah9mg9o3a5BIAAzFuaKoRCw%3D%3D&application=gacoma&environment=production&appversion=3.7.10&lang=en_GB')
+  try:
+    response = requests.get('https://azfun-messconsapi-prod-001.azurewebsites.net/api/GetMaintenanceMessages?code=8u2u6Xh81oivTob0pxClHA5LaJp3tx-Ah9mg9o3a5BIAAzFuaKoRCw%3D%3D&application=gacoma&environment=production&appversion=3.7.10&lang=en_GB', timeout=30)
+  except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+    print(f'{type(e).__name__} during cozytouch_maintenance(): {str(e)}')
+    sys.exit(1)
   logging.debug(response.content)
   try:
     result = response.json()
