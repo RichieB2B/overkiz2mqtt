@@ -51,11 +51,11 @@ def on_connect(client, userdata, flags, rc, properties=None):
   ]
   if rc!=0:
     if hasattr(mqtt, 'CallbackAPIVersion'):
-      print(rc)
+      logging.error(rc)
     elif rc > 0 and rc < 6:
-      print(codes[rc])
+      logging.error(codes[rc])
     else:
-      print(f'Bad connection, unknown return code: {rc}')
+      logging.error(f'Bad connection, unknown return code: {rc}')
     os._exit(1)
 
 def mqtt_init():
@@ -95,7 +95,7 @@ async def main() -> None:
     try:
       await client.login()
     except Exception as e:  # pylint: disable=broad-except
-      print(f'{type(e).__name__} during login: {str(e)}')
+      logging.error(f'{type(e).__name__} during login: {str(e)}')
       # Sleep for a while before retrying credentials
       if isinstance(e, BadCredentialsException):
         time.sleep(300)
@@ -115,7 +115,7 @@ async def main() -> None:
             mqtt_client.publish(f'{config.mqtt_topic}/{device.controllable_name}', message, retain=True)
             publish_states(device.controllable_name, device.states)
         except catch_exceptions as e:
-          print(f'{type(e).__name__} during get_devices(): {str(e)}')
+          logging.error(f'{type(e).__name__} during get_devices(): {str(e)}')
           return
         devices_fresh = time.time()
       for device in devices:
@@ -124,7 +124,7 @@ async def main() -> None:
           try:
             await client.execute_command(device.device_url, config.device_command)
           except catch_exceptions as e:
-            print(f'{type(e).__name__} while executing {config.device_command}: {str(e)}')
+            logging.error(f'{type(e).__name__} while executing {config.device_command}: {str(e)}')
             return
 
         # get current states
@@ -132,7 +132,7 @@ async def main() -> None:
           states = await client.get_state(device.device_url)
           data_received = True
         except catch_exceptions as e:
-          print(f'{type(e).__name__} during get_state(): {str(e)}')
+          logging.error(f'{type(e).__name__} during get_state(): {str(e)}')
           return
         if states:
           publish_states(device.controllable_name, states)
@@ -141,7 +141,7 @@ async def main() -> None:
         fresh = time.time()
       else:
         if time.time() - fresh > 600:
-          print(f"Exiting, too long since last state update")
+          logging.error(f"Exiting, too long since last state update")
           sys.exit(1)
 
       # print incoming events while waiting to start next loop iteration
@@ -149,7 +149,7 @@ async def main() -> None:
         try:
           events = await client.fetch_events()
         except catch_exceptions as e:
-          print(f'{type(e).__name__} during fetch_events(): {str(e)}')
+          logging.error(f'{type(e).__name__} during fetch_events(): {str(e)}')
           return
         for event in events:
           event_string = jsons.dumps(event, strip_nulls=True)
@@ -161,7 +161,7 @@ def cozytouch_maintenance():
   try:
     response = requests.get('https://azfun-messconsapi-prod-001.azurewebsites.net/api/GetMaintenanceMessages?code=8u2u6Xh81oivTob0pxClHA5LaJp3tx-Ah9mg9o3a5BIAAzFuaKoRCw%3D%3D&application=gacoma&environment=production&appversion=3.7.10&lang=en_GB', timeout=30)
   except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-    print(f'{type(e).__name__} during cozytouch_maintenance(): {str(e)}')
+    logging.error(f'{type(e).__name__} during cozytouch_maintenance(): {str(e)}')
     sys.exit(1)
   logging.debug(response.content)
   try:
