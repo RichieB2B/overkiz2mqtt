@@ -96,6 +96,9 @@ async def execute_overkiz_command(client, url, command, params=[]):
   if not url or not command:
     logging.error(f'No url ({url}) or command ({command}) given')
     return
+  if not isinstance(params, list):
+    logging.error(f'params for command {command} should be a list, not {type(params).__name__}: {params}')
+    return
   parameters = [param for param in params if param is not None]
   logging.debug(f'Executing command {command} with parameters {parameters}')
   try:
