@@ -94,7 +94,7 @@ async def on_request_end(session, context, params):
 
 async def execute_overkiz_command(client, url, command, params=[]):
   if not url or not command:
-    logging.error(f'No url ({url}) or command ({command}) given')
+    logging.error(f'No device_url ({url}) or command ({command}) given')
     return
   if not isinstance(params, list):
     logging.error(f'params for command {command} should be a list, not {type(params).__name__}: {params}')

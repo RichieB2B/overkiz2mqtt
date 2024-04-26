@@ -13,8 +13,8 @@ If the command requires one or more parameters set them as a JSON list in `param
 mosquitto_pub -u username -P secret -t 'cozytouch/commands' -m '{"device": "io:AtlanticDomesticHotWaterProductionV2_CV4E_IOComponent", "command": "setTargetTemperature", "params": [50]}'
 ```
 
-Each Overkiz device publishes the command definitions it excepts regularly.
-You can inspect them in the MQTT topics of the specifice devices, i.e.  `cozytouch/io:AtlanticDomesticHotWaterProductionV2_CV4E_IOComponent`
+Each Overkiz device publishes the command definitions it accepts regularly.
+You can inspect them in the MQTT topics of the specific devices, i.e.  `cozytouch/io:AtlanticDomesticHotWaterProductionV2_CV4E_IOComponent`
 ```
 {
   "attributes": [
