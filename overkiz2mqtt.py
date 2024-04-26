@@ -94,6 +94,7 @@ async def on_request_end(session, context, params):
 
 async def execute_overkiz_command(client, url, command, params=[]):
   if not url or not command:
+    logging.error(f'No url ({url}) or command ({command}) given')
     return
   parameters = [param for param in params if param is not None]
   logging.debug(f'Executing command {command} with parameters {parameters}')
@@ -101,6 +102,9 @@ async def execute_overkiz_command(client, url, command, params=[]):
     await client.execute_command(url, Command(command, parameters), "overkiz2mqtt")
   except catch_exceptions as e:
     logging.error(f'{type(e).__name__} while executing {command}{parameters}: {str(e)}')
+    if isinstance(e, TooManyRequestsException):
+        logging.error(f'Exiting')
+        sys.exit(0)
   return
 
 async def main() -> None:
