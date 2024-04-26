@@ -3,6 +3,7 @@
 import os
 import sys
 import time
+import json
 import jsons
 import logging
 import asyncio
@@ -13,7 +14,7 @@ import requests
 
 from pyoverkiz.const import SUPPORTED_SERVERS
 from pyoverkiz.client import OverkizClient
-from pyoverkiz.models import State, EventState
+from pyoverkiz.models import Command, State, EventState
 from pyoverkiz.exceptions import OverkizException, TooManyRequestsException, BadCredentialsException, NotAuthenticatedException
 from aiohttp.client_exceptions import ServerDisconnectedError, ClientOSError, ClientConnectorError
 from aiohttp.http_exceptions import BadHttpMessage
@@ -58,6 +59,18 @@ def on_connect(client, userdata, flags, rc, properties=None):
       logging.error(f'Bad connection, unknown return code: {rc}')
     os._exit(1)
 
+mqtt_command = {}
+def on_message(client, userdata, msg):
+  global mqtt_command
+  logging.debug(f'MQTT message received {msg.topic}: {msg.payload}')
+  try:
+    payload = str(msg.payload.decode("utf-8","strict"))
+    content = json.loads(payload)
+  except Exception as e:
+    logging.error(f'{type(e)}: {str(e)} while decoding topic {msg.topic}')
+    return
+  mqtt_command = content
+
 def mqtt_init():
   if hasattr(mqtt, 'CallbackAPIVersion'):
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
@@ -66,7 +79,9 @@ def mqtt_init():
   if hasattr(config, 'mqtt_username') and hasattr(config, 'mqtt_password'):
     client.username_pw_set(config.mqtt_username, config.mqtt_password)
   client.on_connect=on_connect
+  client.on_message=on_message
   client.connect(config.mqtt_broker)
+  client.subscribe(config.mqtt_topic + '/commands')
   client.loop_start()
   return client
 
@@ -77,7 +92,19 @@ async def on_request_end(session, context, params):
   logging.getLogger('aiohttp.client').debug(f'Request end <{params}>')
   logging.getLogger('aiohttp.client').debug(await params.response.text())
 
+async def execute_overkiz_command(client, url, command, params=[]):
+  if not url or not command:
+    return
+  parameters = [param for param in params if param is not None]
+  logging.debug(f'Executing command {command} with parameters {parameters}')
+  try:
+    await client.execute_command(url, Command(command, parameters), "overkiz2mqtt")
+  except catch_exceptions as e:
+    logging.error(f'{type(e).__name__} while executing {command}{parameters}: {str(e)}')
+  return
+
 async def main() -> None:
+  global mqtt_command
   jsons.set_serializer(serialize_state, State)
   jsons.set_serializer(serialize_state, EventState)
   if args.debug:
@@ -101,6 +128,7 @@ async def main() -> None:
         time.sleep(300)
       return
     devices_fresh = 0
+    device_urls = {}
     # Start loop
     fresh = time.time()
     while True:
@@ -119,13 +147,10 @@ async def main() -> None:
           return
         devices_fresh = time.time()
       for device in devices:
+        device_urls[device.controllable_name] = device.device_url
         # execute command every sleep cycle
         if hasattr(config, 'device_name') and hasattr(config, 'device_command') and device.controllable_name == config.device_name:
-          try:
-            await client.execute_command(device.device_url, config.device_command)
-          except catch_exceptions as e:
-            logging.error(f'{type(e).__name__} while executing {config.device_command}: {str(e)}')
-            return
+          await execute_overkiz_command(client, device.device_url, config.device_command, getattr(config, 'device_command_params', []))
 
         # get current states
         try:
@@ -144,8 +169,14 @@ async def main() -> None:
           logging.error(f"Exiting, too long since last state update")
           sys.exit(1)
 
-      # print incoming events while waiting to start next loop iteration
+      #  while waiting to start next loop iteration
       for i in range(0, getattr(config, 'sleep', 60), 2):
+        # execute command received from mqtt if device name matches
+        if mqtt_command and mqtt_command.get('device', '') in device_urls:
+          await execute_overkiz_command(client, device_urls[mqtt_command['device']], mqtt_command.get('command', None), mqtt_command.get('params', []))
+          mqtt_command = {}
+
+        # print incoming events
         try:
           events = await client.fetch_events()
         except catch_exceptions as e:

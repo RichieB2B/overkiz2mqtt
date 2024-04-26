@@ -6,6 +6,7 @@ server = "atlantic_cozytouch"
 # command to run after every sleep cycle, uncomment to use
 #device_name = "io:AtlanticDomesticHotWaterProductionV2_CV4E_IOComponent"
 #device_command = "refreshMiddleWaterTemperature"
+#device_command_params = ['parameter', 'list', 'or', 'empty', 'list']
 sleep = 60
 
 # mqtt

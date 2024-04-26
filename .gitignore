@@ -161,3 +161,4 @@ cython_debug/
 
 # Config contains passwords
 config.py
+set-target-temperature.sh
