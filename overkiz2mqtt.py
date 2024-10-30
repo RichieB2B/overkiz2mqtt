@@ -25,6 +25,7 @@ catch_exceptions = (
   ClientOSError,
   ClientConnectorError,
   BadHttpMessage,
+  TimeoutError,
   asyncio.TimeoutError,
 )
 
